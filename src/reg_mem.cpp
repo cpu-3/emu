@@ -1,3 +1,29 @@
+typedef enum {
+    PageFault
+} Cause;
+
+class Exception {
+  public:
+    Cause cause;
+    Exception(Cause cause) {
+        this->cause = cause;
+    }
+};
+
+class Permission {
+  public:
+    bool read;
+    bool write;
+    bool exec;
+    bool user;
+    Permission(bool read, bool write, bool exec, bool user) {
+        this->read = read;
+        this->write = write;
+        this->exec = exec;
+        this->user = user;
+    }
+};
+
 class Memory
 {
     static const uint32_t memory_size = 1 << 31;
@@ -5,10 +31,111 @@ class Memory
     static const uint32_t uart_rx_addr = 0x10000;
     static const uint32_t uart_tx_addr = 0x10004;
     static const uint32_t led_addr = 0x10008;
+    static const uint32_t PGSIZE = 1 << 12;
+    static const uint32_t PTESIZE = 4;
+    static const uint32_t LEVELS = 2;
 
     uint8_t memory[memory_size];
     IO *io;
 
+    uint32_t satp;
+
+    bool is_addressing_on() {
+        return (satp >> 31) & 1;
+    }
+    
+    uint32_t base_table() {
+        return (satp & 0x7fffff) * PGSIZE;
+    }
+
+    uint32_t vpn1(uint32_t addr) {
+        return addr >> 22;
+    }
+
+    uint32_t vpn0(uint32_t addr) {
+        return (addr >> 12) & 0x7ff;
+    }
+
+    uint32_t offset(uint32_t addr) {
+        return addr & 0xfff;
+    }
+
+    uint64_t ppn(uint64_t addr) {
+        return addr / PGSIZE;
+    }
+
+    uint64_t ppn0(uint64_t addr) {
+        return (addr >> 12) & 0x7ff;
+    }
+
+    uint64_t ppn1(uint64_t addr) {
+        return (addr >> 22);
+    }
+
+    // DAGUXWRV
+    // 76543210
+    bool is_valid(uint32_t addr) {
+        return addr & 1;
+    }
+
+    bool is_read(uint32_t addr) {
+        return (addr >> 1) & 1;
+    }
+
+    bool is_write(uint32_t addr) {
+        return (addr >> 2) & 1;
+    }
+
+    bool is_exec(uint32_t addr) {
+        return (addr >> 3) & 1;
+    }
+
+    bool is_user(uint32_t addr) {
+        return (addr >> 4) & 1;
+    }
+
+    uint32_t va2pa(uint32_t addr, Permission perm) {
+        int32_t i = LEVELS - 1;
+        uint32_t vpns[2] = {vpn1(addr), vpn0(addr)};
+
+        uint64_t a = base_table();
+        uint64_t pte;
+        while (i >= 0) {
+            pte = a + vpns[i] * PTESIZE;
+            // TODO: PMA/PTE check
+            if (!is_valid(pte) || (is_read(pte) && is_write(pte))) throw Exception(Cause::PageFault);
+            if (is_read(pte) || is_exec(pte)) break;
+            i -= 1;
+            a = ppn(pte) * PGSIZE;
+            if (i < 0) {
+                throw Exception(Cause::PageFault);
+            }
+        }
+        if ((is_read(pte) != perm.read) ||
+            (is_write(pte) != perm.write) ||
+            (is_exec(pte) != perm.exec) ||
+            (is_user(pte) != perm.user))
+        {
+            throw Exception(Cause::PageFault);
+        }
+        // TODO: check SUM/MXR
+
+        // misaligned superpage
+        if (i > 0 && ppn0(pte) != 0) throw Exception(Cause::PageFault);
+
+        // TODO: PMA PMP check / access/dirty check 
+
+        // physical addr is 34 bit
+        uint64_t pa;
+        if (i > 0) {
+            pa = (ppn1(pte) << 22) | (vpn0(addr) << 12) | (offset(addr));
+        } 
+        else 
+        {
+            pa = (ppn1(pte) << 22) | (ppn0(pte) << 12) | (offset(addr));
+        }
+        return pa;
+    }
 
     void alignment_check(uint32_t addr, uint8_t size)
     {
@@ -148,6 +275,10 @@ class Memory
         {
             memory[addr + i] = data[i];
         }
+    }
+
+    void write_satp(uint32_t val) {
+        satp = val;
     }
 
     void show_data(uint32_t addr, uint32_t length)
