@@ -1,2 +1,6 @@
-simu
+emu
 a.out
+
+test/*.cmo
+test/*.cmi
+test/*.s
