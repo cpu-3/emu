@@ -14,6 +14,7 @@ enum struct Inst : uint8_t {
     FLOAD   = 0b0000111,
     FSTORE  = 0b0100111,
     FPU     = 0b1010011,
+    SYSTEM  = 0b1110011,
 };
 
 enum struct Branch_Inst : uint8_t {
@@ -125,4 +126,13 @@ enum struct Mul_Div_Inst: uint8_t {
     DIVU   = 0b101,
     REM    = 0b110,
     REMU   = 0b111,
+};
+
+enum struct System_Inst: uint8_t {
+    CSRRW  = 0b001,
+    CSRRS  = 0b010,
+    CSRRC  = 0b011,
+    CSRRWI = 0b101,
+    CSRRSI = 0b110,
+    CSRRCI = 0b111,
 };

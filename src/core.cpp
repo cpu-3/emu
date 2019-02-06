@@ -1137,6 +1137,64 @@ class Core
         }
     }
 
+    void csrrw(Decoder *d) 
+    {
+        
+    }
+
+    void csrrs(Decoder *d) 
+    {
+
+    }
+
+    void csrrc(Decoder *d) 
+    {
+
+    }
+
+    void csrrwi(Decoder *d) 
+    {
+
+    }
+
+    void csrrsi(Decoder *d) 
+    {
+
+    }
+
+    void csrrci(Decoder *d) 
+    {
+
+    }
+
+    void sys(Decoder *d) 
+    {
+        switch (static_cast<System_Inst>(d->funct3())) 
+        {
+            case System_Inst::CSRRW:
+                csrrw(d);
+                break;
+            case System_Inst::CSRRS:
+                csrrs(d);
+                break;
+            case System_Inst::CSRRC:
+                csrrc(d);
+                break;
+            case System_Inst::CSRRWI:
+                csrrwi(d);
+                break;
+            case System_Inst::CSRRSI:
+                csrrsi(d);
+                break;
+            case System_Inst::CSRRCI:
+                csrrci(d);
+                break;
+            default:
+                // system instrs other than csr
+                error_dump("Systemで未対応のものが使われました");
+        }
+    }
+
     void run(Decoder *d)
     {
         switch (static_cast<Inst>(d->opcode()))
@@ -1184,6 +1242,10 @@ class Core
             break;
         case Inst::FPU:
             fpu(d);
+            r->ip += 4;
+            break;
+        case Inst::SYSTEM:
+            sys(d);
             r->ip += 4;
             break;
         default:
