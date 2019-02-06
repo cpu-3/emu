@@ -1,22 +1,27 @@
-typedef enum {
+typedef enum
+{
     PageFault
 } Cause;
 
-class Exception {
+class Exception
+{
   public:
     Cause cause;
-    Exception(Cause cause) {
+    Exception(Cause cause)
+    {
         this->cause = cause;
     }
 };
 
-class Permission {
+class Permission
+{
   public:
     bool read;
     bool write;
     bool exec;
     bool user;
-    Permission(bool read, bool write, bool exec, bool user) {
+    Permission(bool read, bool write, bool exec, bool user)
+    {
         this->read = read;
         this->write = write;
         this->exec = exec;
@@ -40,74 +45,92 @@ class Memory
 
     uint32_t satp;
 
-    bool is_addressing_on() {
+    bool is_addressing_on()
+    {
         return (satp >> 31) & 1;
     }
-    
-    uint32_t base_table() {
+
+    uint32_t base_table()
+    {
         return (satp & 0x7fffff) * PGSIZE;
     }
 
-    uint32_t vpn1(uint32_t addr) {
+    uint32_t vpn1(uint32_t addr)
+    {
         return addr >> 22;
     }
 
-    uint32_t vpn0(uint32_t addr) {
+    uint32_t vpn0(uint32_t addr)
+    {
         return (addr >> 12) & 0x7ff;
     }
 
-    uint32_t offset(uint32_t addr) {
+    uint32_t offset(uint32_t addr)
+    {
         return addr & 0xfff;
     }
 
-    uint64_t ppn(uint64_t addr) {
+    uint64_t ppn(uint64_t addr)
+    {
         return addr / PGSIZE;
     }
 
-    uint64_t ppn0(uint64_t addr) {
+    uint64_t ppn0(uint64_t addr)
+    {
         return (addr >> 12) & 0x7ff;
     }
 
-    uint64_t ppn1(uint64_t addr) {
+    uint64_t ppn1(uint64_t addr)
+    {
         return (addr >> 22);
     }
 
     // DAGUXWRV
     // 76543210
-    bool is_valid(uint32_t addr) {
+    bool is_valid(uint32_t addr)
+    {
         return addr & 1;
     }
 
-    bool is_read(uint32_t addr) {
+    bool is_read(uint32_t addr)
+    {
         return (addr >> 1) & 1;
     }
 
-    bool is_write(uint32_t addr) {
+    bool is_write(uint32_t addr)
+    {
         return (addr >> 2) & 1;
     }
 
-    bool is_exec(uint32_t addr) {
+    bool is_exec(uint32_t addr)
+    {
         return (addr >> 3) & 1;
     }
 
-    bool is_user(uint32_t addr) {
+    bool is_user(uint32_t addr)
+    {
         return (addr >> 4) & 1;
     }
 
-    uint32_t va2pa(uint32_t addr, Permission perm) {
+    uint32_t va2pa(uint32_t addr, Permission perm)
+    {
         int32_t i = LEVELS - 1;
         uint32_t vpns[2] = {vpn1(addr), vpn0(addr)};
 
         uint64_t a = base_table();
         uint64_t pte;
-        while (i >= 0) {
+        while (i >= 0)
+        {
             pte = a + vpns[i] * PTESIZE;
             // TODO: PMA/PTE check
-            if (!is_valid(pte) || (is_read(pte) && is_write(pte))) throw Exception(Cause::PageFault);
-            if (is_read(pte) || is_exec(pte)) break;
+            if (!is_valid(pte) || (is_read(pte) && is_write(pte)))
+                throw Exception(Cause::PageFault);
+            if (is_read(pte) || is_exec(pte))
+                break;
             i -= 1;
             a = ppn(pte) * PGSIZE;
-            if (i < 0) {
+            if (i < 0)
+            {
                 throw Exception(Cause::PageFault);
             }
         }
@@ -121,16 +144,18 @@ class Memory
         // TODO: check SUM/MXR
 
         // misaligned superpage
-        if (i > 0 && ppn0(pte) != 0) throw Exception(Cause::PageFault);
+        if (i > 0 && ppn0(pte) != 0)
+            throw Exception(Cause::PageFault);
 
-        // TODO: PMA PMP check / access/dirty check 
+        // TODO: PMA PMP check / access/dirty check
 
         // physical addr is 34 bit
         uint64_t pa;
-        if (i > 0) {
+        if (i > 0)
+        {
             pa = (ppn1(pte) << 22) | (vpn0(addr) << 12) | (offset(addr));
-        } 
-        else 
+        }
+        else
         {
             pa = (ppn1(pte) << 22) | (ppn0(pte) << 12) | (offset(addr));
         }
@@ -188,9 +213,9 @@ class Memory
         return true;
     }
 
-
   public:
-    Memory(IO *io) {
+    Memory(IO *io)
+    {
         this->io = io;
     }
 
@@ -277,15 +302,23 @@ class Memory
         }
     }
 
-    void write_satp(uint32_t val) {
+    void write_satp(uint32_t val)
+    {
         satp = val;
+    }
+
+    uint32_t read_satp()
+    {
+        return satp;
     }
 
     void show_data(uint32_t addr, uint32_t length)
     {
         int cnt = 0;
-        for (uint32_t ad = addr; ad < addr + length; ad += 4) {
-            if (ad + 4 >= memory_size) {
+        for (uint32_t ad = addr; ad < addr + length; ad += 4)
+        {
+            if (ad + 4 >= memory_size)
+            {
                 break;
             }
             uint32_t v = read_mem_4(ad);
@@ -300,13 +333,15 @@ typedef union {
     float f;
 } float_int;
 
-int f2i(float x) {
+int f2i(float x)
+{
     float_int data;
     data.f = x;
     return data.i;
 }
 
-float i2f(int x) {
+float i2f(int x)
+{
     float_int data;
     data.i = x;
     return data.f;
@@ -392,7 +427,8 @@ class Register
                 std::cout << std::endl;
             }
         }
-        std::cout << std::endl << std::endl;
+        std::cout << std::endl
+                  << std::endl;
         std::cout << "fRegister: " << std::endl;
         for (int i = 0; i < freg_size; i++)
         {
@@ -406,4 +442,3 @@ class Register
         std::cout << std::dec;
     }
 };
-

@@ -44,39 +44,42 @@ class ALU
     {
         return x ^ y;
     }
-    static uint32_t mul(int32_t x, int32_t y) 
+    static uint32_t mul(int32_t x, int32_t y)
     {
         return x * y;
     }
-    static uint32_t mulh(int32_t x, int32_t y) {
+    static uint32_t mulh(int32_t x, int32_t y)
+    {
         int64_t z = (int64_t)x * (int64_t)y;
         return (uint64_t)z >> 32;
     }
-    static uint32_t mulhu(uint32_t x, uint32_t y) {
+    static uint32_t mulhu(uint32_t x, uint32_t y)
+    {
         uint64_t z = (uint64_t)x * (uint64_t)y;
         return (uint64_t)z >> 32;
     }
-    static uint32_t mulhsu(int32_t x, uint32_t y) {
+    static uint32_t mulhsu(int32_t x, uint32_t y)
+    {
         int64_t z = (int64_t)x * (int64_t)y;
         return (uint64_t)z >> 32;
     }
-    static uint32_t div(int32_t x, int32_t y) 
+    static uint32_t div(int32_t x, int32_t y)
     {
         return x / y;
     }
-    static uint32_t rem(int32_t x, int32_t y) 
+    static uint32_t rem(int32_t x, int32_t y)
     {
         return x % y;
     }
-    static uint32_t mulu(uint32_t x, uint32_t y) 
+    static uint32_t mulu(uint32_t x, uint32_t y)
     {
         return x * y;
     }
-    static uint32_t divu(uint32_t x, uint32_t y) 
+    static uint32_t divu(uint32_t x, uint32_t y)
     {
         return x / y;
     }
-    static uint32_t remu(uint32_t x, uint32_t y) 
+    static uint32_t remu(uint32_t x, uint32_t y)
     {
         return x % y;
     }
@@ -445,8 +448,8 @@ class Core
         disasm->base = d->rs1();
         disasm->imm = d->i_type_imm();
     }
-    // void srai 
-    
+    // void srai
+
     void add(Decoder *d)
     {
         uint32_t x = r->get_ireg(d->rs1());
@@ -760,43 +763,43 @@ class Core
         }
     }
 
-    void mul_div(Decoder *d) 
+    void mul_div(Decoder *d)
     {
         switch (static_cast<Mul_Div_Inst>(d->funct3()))
         {
-            case Mul_Div_Inst::MUL:
-                mul(d);
-                break;
-            case Mul_Div_Inst::MULH:
-                mulh(d);
-                break;
-            case Mul_Div_Inst::MULHU:
-                mulhu(d);
-                break;
-            case Mul_Div_Inst::MULHSU:
-                mulhsu(d);
-                break;
-            case Mul_Div_Inst::DIV:
-                div(d);
-                break;
-            case Mul_Div_Inst::REM:
-                rem(d);
-                break;
-            case Mul_Div_Inst::DIVU:
-                divu(d);
-                break;
-            case Mul_Div_Inst::REMU:
-                remu(d);
-                break;
-            default:
-                error_dump("プログラムのバグです(mul_div)");
+        case Mul_Div_Inst::MUL:
+            mul(d);
+            break;
+        case Mul_Div_Inst::MULH:
+            mulh(d);
+            break;
+        case Mul_Div_Inst::MULHU:
+            mulhu(d);
+            break;
+        case Mul_Div_Inst::MULHSU:
+            mulhsu(d);
+            break;
+        case Mul_Div_Inst::DIV:
+            div(d);
+            break;
+        case Mul_Div_Inst::REM:
+            rem(d);
+            break;
+        case Mul_Div_Inst::DIVU:
+            divu(d);
+            break;
+        case Mul_Div_Inst::REMU:
+            remu(d);
+            break;
+        default:
+            error_dump("プログラムのバグです(mul_div)");
         }
     }
 
     void alu(Decoder *d)
     {
         // mul/div
-        if (d->funct7() == 1) 
+        if (d->funct7() == 1)
         {
             mul_div(d);
             return;
@@ -869,8 +872,9 @@ class Core
 
     void fadd(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
         uint32_t x = r->get_freg_raw(d->rs1());
         uint32_t y = r->get_freg_raw(d->rs2());
@@ -884,8 +888,9 @@ class Core
     }
     void fsub(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
         uint32_t x = r->get_freg_raw(d->rs1());
         uint32_t y = r->get_freg_raw(d->rs2());
@@ -899,8 +904,9 @@ class Core
     }
     void fmul(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
         uint32_t x = r->get_freg_raw(d->rs1());
         uint32_t y = r->get_freg_raw(d->rs2());
@@ -914,8 +920,9 @@ class Core
     }
     void fdiv(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
         uint32_t x = r->get_freg_raw(d->rs1());
         uint32_t y = r->get_freg_raw(d->rs2());
@@ -929,11 +936,13 @@ class Core
     }
     void fsqrt(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
-        if(d->rs2() != 0){
-          error_dump("命令フォーマットがおかしいです(fsqrtではrs2()は0になる)\n");
+        if (d->rs2() != 0)
+        {
+            error_dump("命令フォーマットがおかしいです(fsqrtではrs2()は0になる)\n");
         }
         uint32_t x = r->get_freg_raw(d->rs1());
         r->set_freg_raw(d->rd(), FPU::fsqrt(x));
@@ -944,7 +953,7 @@ class Core
         disasm->src1 = d->rs1();
     }
 
-    void _fsgnj(Decoder *d) 
+    void _fsgnj(Decoder *d)
     {
         float x = r->get_freg(d->rs1());
         float y = r->get_freg(d->rs2());
@@ -956,7 +965,7 @@ class Core
         disasm->src1 = d->rs1();
         disasm->src2 = d->rs2();
     }
-    void fsgnjn(Decoder *d) 
+    void fsgnjn(Decoder *d)
     {
         float x = r->get_freg(d->rs1());
         float y = r->get_freg(d->rs2());
@@ -971,11 +980,13 @@ class Core
 
     void fcvt_w_s(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
-        if(d->rs2() != 0){
-          error_dump("命令フォーマットがおかしいです(fcvt_w_sではrs2()は0になる)\n");
+        if (d->rs2() != 0)
+        {
+            error_dump("命令フォーマットがおかしいです(fcvt_w_sではrs2()は0になる)\n");
         }
         float x = r->get_freg(d->rs1());
         r->set_ireg(d->rd(), FPU::float2int(x));
@@ -987,11 +998,13 @@ class Core
     }
     void fcvt_s_w(Decoder *d)
     {
-        if(d->rm() != 0){
-          error_dump("丸め型がおかしいです\n");
+        if (d->rm() != 0)
+        {
+            error_dump("丸め型がおかしいです\n");
         }
-        if(d->rs2() != 0){
-          error_dump("命令フォーマットがおかしいです(fcvt_w_sではrs2()は0になる)\n");
+        if (d->rs2() != 0)
+        {
+            error_dump("命令フォーマットがおかしいです(fcvt_w_sではrs2()は0になる)\n");
         }
         uint32_t x = r->get_ireg(d->rs1());
         r->set_freg(d->rd(), FPU::int2float(x));
@@ -1006,7 +1019,7 @@ class Core
     {
         float x = r->get_freg(d->rs1());
         float y = r->get_freg(d->rs2());
-        r->set_ireg(d->rd(),FPU::feq(x,y));
+        r->set_ireg(d->rd(), FPU::feq(x, y));
         (stat->feq.stat)++;
         disasm->type = "fr";
         disasm->inst_name = "feq";
@@ -1018,7 +1031,7 @@ class Core
     {
         float x = r->get_freg(d->rs1());
         float y = r->get_freg(d->rs2());
-        r->set_ireg(d->rd(),FPU::flt(x,y));
+        r->set_ireg(d->rd(), FPU::flt(x, y));
         (stat->flt.stat)++;
         disasm->type = "fr";
         disasm->inst_name = "flt";
@@ -1030,7 +1043,7 @@ class Core
     {
         float x = r->get_freg(d->rs1());
         float y = r->get_freg(d->rs2());
-        r->set_ireg(d->rd(),FPU::fle(x,y));
+        r->set_ireg(d->rd(), FPU::fle(x, y));
         (stat->fle.stat)++;
         disasm->type = "fr";
         disasm->inst_name = "fle";
@@ -1067,9 +1080,9 @@ class Core
         }
     }
 
-    void fsgnj(Decoder *d) 
+    void fsgnj(Decoder *d)
     {
-        switch (static_cast<FSgnj_Inst>(d->funct3())) 
+        switch (static_cast<FSgnj_Inst>(d->funct3()))
         {
         case FSgnj_Inst::FSGNJ:
             _fsgnj(d);
@@ -1137,61 +1150,95 @@ class Core
         }
     }
 
-    void csrrw(Decoder *d) 
+    void csrrw(Decoder *d)
     {
-        
-    }
-
-    void csrrs(Decoder *d) 
-    {
-
-    }
-
-    void csrrc(Decoder *d) 
-    {
-
-    }
-
-    void csrrwi(Decoder *d) 
-    {
-
-    }
-
-    void csrrsi(Decoder *d) 
-    {
-
-    }
-
-    void csrrci(Decoder *d) 
-    {
-
-    }
-
-    void sys(Decoder *d) 
-    {
-        switch (static_cast<System_Inst>(d->funct3())) 
+        uint32_t x = r->get_ireg(d->rs2());
+        uint32_t satp;
+        switch (static_cast<CSR>(d->i_type_imm()))
         {
-            case System_Inst::CSRRW:
-                csrrw(d);
-                break;
-            case System_Inst::CSRRS:
-                csrrs(d);
-                break;
-            case System_Inst::CSRRC:
-                csrrc(d);
-                break;
-            case System_Inst::CSRRWI:
-                csrrwi(d);
-                break;
-            case System_Inst::CSRRSI:
-                csrrsi(d);
-                break;
-            case System_Inst::CSRRCI:
-                csrrci(d);
-                break;
-            default:
-                // system instrs other than csr
-                error_dump("Systemで未対応のものが使われました");
+        case CSR::SATP:
+            satp = m->read_satp();
+            m->write_satp(x);
+            r->set_ireg(d->rd(), satp);
+            break;
+        default:
+            error_dump("対応していないstatusレジスタ番号です");
+        }
+    }
+
+    void csrrs(Decoder *d)
+    {
+        uint32_t x = r->get_ireg(d->rs2());
+        uint32_t satp;
+        switch (static_cast<CSR>(d->i_type_imm()))
+        {
+        case CSR::SATP:
+            satp = m->read_satp();
+            m->write_satp(x | satp);
+            r->set_ireg(d->rd(), satp);
+            break;
+        default:
+            error_dump("対応していないstatusレジスタ番号です");
+        }
+    }
+
+    void csrrc(Decoder *d)
+    {
+        uint32_t x = r->get_ireg(d->rs2());
+
+        uint32_t satp;
+        switch (static_cast<CSR>(d->i_type_imm()))
+        {
+        case CSR::SATP:
+            satp = m->read_satp();
+            m->write_satp(x & (~satp));
+            r->set_ireg(d->rd(), satp);
+            break;
+        default:
+            error_dump("対応していないstatusレジスタ番号です");
+        }
+    }
+
+    void csrrwi(Decoder *d)
+    {
+        // not implemented
+    }
+
+    void csrrsi(Decoder *d)
+    {
+        // not implemented
+    }
+
+    void csrrci(Decoder *d)
+    {
+        // not implemented
+    }
+
+    void sys(Decoder *d)
+    {
+        switch (static_cast<System_Inst>(d->funct3()))
+        {
+        case System_Inst::CSRRW:
+            csrrw(d);
+            break;
+        case System_Inst::CSRRS:
+            csrrs(d);
+            break;
+        case System_Inst::CSRRC:
+            csrrc(d);
+            break;
+        case System_Inst::CSRRWI:
+            csrrwi(d);
+            break;
+        case System_Inst::CSRRSI:
+            csrrsi(d);
+            break;
+        case System_Inst::CSRRCI:
+            csrrci(d);
+            break;
+        default:
+            // system instrs other than csr
+            error_dump("Systemで未対応のものが使われました");
         }
     }
 
@@ -1307,32 +1354,41 @@ class Core
             uint32_t ip = r->ip;
             Decoder d = Decoder(m->get_inst(ip));
             run(&d);
-            if (settings->show_inst_value) {
+            if (settings->show_inst_value)
+            {
                 printf("ip: %x\n", ip);
                 std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
                 disasm->print_inst(disasm->type);
             }
-            if (settings->show_registers) {
+            if (settings->show_registers)
+            {
                 r->info();
             }
-            if (settings->show_stack) {
+            if (settings->show_stack)
+            {
                 show_stack_from_top();
             }
-            if (settings->show_io) {
+            if (settings->show_io)
+            {
                 io->show_status();
             }
-            if (settings->step_execution) {
+            if (settings->step_execution)
+            {
                 std::string s;
                 std::getline(std::cin, s);
-                if(settings->break_point && s == "c"){
+                if (settings->break_point && s == "c")
+                {
                     settings->step_execution = false;
                 }
             }
-            if (settings->break_point) {
-                if(ip == settings->ip){
+            if (settings->break_point)
+            {
+                if (ip == settings->ip)
+                {
                     std::string s;
                     std::getline(std::cin, s);
-                    if(s != "c"){
+                    if (s != "c")
+                    {
                         settings->step_execution = true;
                     }
                 }
@@ -1340,4 +1396,3 @@ class Core
         }
     }
 };
-
