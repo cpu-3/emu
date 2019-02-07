@@ -90,7 +90,7 @@ class Memory
 
     uint32_t vpn0(uint32_t addr)
     {
-        return (addr >> 12) & 0x7ff;
+        return (addr >> 12) & 0x3ff;
     }
 
     uint32_t offset(uint32_t addr)
@@ -105,7 +105,7 @@ class Memory
 
     uint64_t ppn0(uint64_t addr)
     {
-        return (addr >> 12) & 0x7ff;
+        return (addr >> 12) & 0x3ff;
     }
 
     uint64_t ppn1(uint64_t addr)
@@ -154,33 +154,39 @@ class Memory
 
     uint64_t va2pa(uint32_t addr, Permission perm)
     {
-        printf("va2pa: %x\n", addr);
+        // printf("va2pa: %x\n", addr);
         int32_t i = LEVELS - 1;
-        uint32_t vpns[2] = {vpn1(addr), vpn0(addr)};
+        uint32_t vpns[2] = {vpn0(addr), vpn1(addr)};
 
         uint64_t a = base_table();
-        print_table(a);
+        // print_table(a);
         uint64_t pte;
+
+        uint32_t *m = (uint32_t *)memory;
         while (i >= 0)
         {
-            pte = a + vpns[i] * PTESIZE;
+            // printf("i: %x, vpn: %x\n", i, vpns[i]);
+            pte = m[(a + vpns[i] * PTESIZE) / 4];
             // TODO: PMA/PTE check
-            if (!is_valid(pte) || (is_read(pte) && is_write(pte)))
+            if (!is_valid(pte) || (!is_read(pte) && is_write(pte)))
                 throw Exception(Cause::PageFault);
             if (is_read(pte) || is_exec(pte))
                 break;
             i -= 1;
             a = ppn(pte) * PGSIZE;
+            // print_table(a);
             if (i < 0)
             {
                 throw Exception(Cause::PageFault);
             }
         }
-        if ((is_read(pte) != perm.read) ||
-            (is_write(pte) != perm.write) ||
-            (is_exec(pte) != perm.exec) ||
-            (is_user(pte) != perm.user))
+        //printf("%x\n", pte);
+        if ((perm.read && !is_read(pte)) ||
+            (perm.write && !is_write(pte)) ||
+            (perm.exec && !is_exec(pte)) ||
+            (perm.user && !is_user(pte)))
         {
+            printf("pagefault\n");
             throw Exception(Cause::PageFault);
         }
         // TODO: check SUM/MXR
@@ -193,6 +199,8 @@ class Memory
 
         // physical addr is 34 bit
         uint64_t pa;
+
+        // clear flag bits
         if (i > 0)
         {
             pa = (ppn1(pte) << 22) | (vpn0(addr) << 12) | (offset(addr));
@@ -201,7 +209,7 @@ class Memory
         {
             pa = (ppn1(pte) << 22) | (ppn0(pte) << 12) | (offset(addr));
         }
-        printf("[debug] %x -> %lx\n", addr, pa);
+        //printf("[debug] %x -> %lx\n", addr, pa);
         return pa;
     }
 
