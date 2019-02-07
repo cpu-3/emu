@@ -85,6 +85,13 @@ class ALU
     }
 };
 
+typedef enum
+{
+    User,
+    Supervisor,
+    Machine
+} Mode;
+
 class Core
 {
     const uint32_t instruction_load_address = 0;
@@ -95,8 +102,18 @@ class Core
     IO *io;
     Stat *stat;
     Disasm *disasm;
+    Mode mode;
 
     Settings *settings;
+
+    Permission mode_perm()
+    {
+        if (mode == User)
+        {
+            return Permission().user_on().read_on();
+        }
+        return Permission().read_on();
+    }
 
     void lui(Decoder *d)
     {
@@ -221,12 +238,13 @@ class Core
 
     void lb(Decoder *d)
     {
+        Permission perm = mode_perm();
         uint32_t base = r->get_ireg(d->rs1());
         int32_t offset = d->i_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        int32_t val = m->read_mem_1(addr);
+        int32_t val = m->read_mem_1(addr, perm);
         val <<= 24;
         val >>= 24;
         r->set_ireg(d->rd(), val);
@@ -239,12 +257,13 @@ class Core
     }
     void lh(Decoder *d)
     {
+        Permission perm = mode_perm();
         uint32_t base = r->get_ireg(d->rs1());
         int32_t offset = d->i_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        int32_t val = m->read_mem_2(addr);
+        int32_t val = m->read_mem_2(addr, perm);
         val <<= 16;
         val >>= 16;
         r->set_ireg(d->rd(), val);
@@ -257,12 +276,13 @@ class Core
     }
     void lw(Decoder *d)
     {
+        Permission perm = mode_perm();
         uint32_t base = r->get_ireg(d->rs1());
         int32_t offset = d->i_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        uint32_t val = m->read_mem_4(addr);
+        uint32_t val = m->read_mem_4(addr, perm);
         r->set_ireg(d->rd(), val);
         (stat->lw.stat)++;
         disasm->type = "i";
@@ -273,10 +293,11 @@ class Core
     }
     void lbu(Decoder *d)
     {
+        Permission perm = mode_perm();
         uint32_t base = r->get_ireg(d->rs1());
         uint32_t offset = d->i_type_imm();
         uint32_t addr = base + offset;
-        uint32_t val = m->read_mem_1(addr);
+        uint32_t val = m->read_mem_1(addr, perm);
         r->set_ireg(d->rd(), val);
         (stat->lbu.stat)++;
         disasm->type = "i";
@@ -287,10 +308,11 @@ class Core
     }
     void lhu(Decoder *d)
     {
+        Permission perm = mode_perm();
         uint32_t base = r->get_ireg(d->rs1());
         uint32_t offset = d->i_type_imm();
         uint32_t addr = base + offset;
-        uint32_t val = m->read_mem_2(addr);
+        uint32_t val = m->read_mem_2(addr, perm);
         r->set_ireg(d->rd(), val);
         (stat->lhu.stat)++;
         disasm->type = "i";
@@ -302,13 +324,14 @@ class Core
 
     void sb(Decoder *d)
     {
+        Permission perm = mode_perm().write_on();
         uint32_t base = r->get_ireg(d->rs1());
         uint8_t src = r->get_ireg(d->rs2()) & 0xff;
         int32_t offset = d->s_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        m->write_mem(addr, src);
+        m->write_mem(addr, src, perm);
         (stat->sb.stat)++;
         disasm->type = "s";
         disasm->inst_name = "sb";
@@ -319,13 +342,14 @@ class Core
 
     void sh(Decoder *d)
     {
+        Permission perm = mode_perm().write_on();
         uint32_t base = r->get_ireg(d->rs1());
         uint16_t src = r->get_ireg(d->rs2()) & 0xffff;
         int32_t offset = d->s_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        m->write_mem(addr, src);
+        m->write_mem(addr, src, perm);
         (stat->sh.stat)++;
         disasm->type = "s";
         disasm->inst_name = "sh";
@@ -336,13 +360,14 @@ class Core
 
     void sw(Decoder *d)
     {
+        Permission perm = mode_perm().write_on();
         uint32_t base = r->get_ireg(d->rs1());
         uint32_t src = r->get_ireg(d->rs2());
         int32_t offset = d->s_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        m->write_mem(addr, src);
+        m->write_mem(addr, src, perm);
         (stat->sw.stat)++;
         disasm->type = "s";
         disasm->inst_name = "sw";
@@ -838,12 +863,13 @@ class Core
 
     void flw(Decoder *d)
     {
+        Permission perm = mode_perm();
         uint32_t base = r->get_ireg(d->rs1());
         int32_t offset = d->i_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        uint32_t val = m->read_mem_4(addr);
+        uint32_t val = m->read_mem_4(addr, perm);
         r->set_freg_raw(d->rd(), val);
         (stat->flw.stat)++;
         disasm->type = "fi";
@@ -855,13 +881,14 @@ class Core
 
     void fsw(Decoder *d)
     {
+        Permission perm = mode_perm().write_on();
         uint32_t base = r->get_ireg(d->rs1());
         uint32_t src = r->get_freg_raw(d->rs2());
         int32_t offset = d->s_type_imm();
         offset <<= 20;
         offset >>= 20;
         uint32_t addr = base + offset;
-        m->write_mem(addr, src);
+        m->write_mem(addr, src, perm);
         (stat->fsw.stat)++;
         disasm->type = "fs";
         disasm->inst_name = "fsw";
@@ -1152,7 +1179,8 @@ class Core
 
     void csrrw(Decoder *d)
     {
-        uint32_t x = r->get_ireg(d->rs2());
+        printf("csrrw\n");
+        uint32_t x = r->get_ireg(d->rs1());
         uint32_t satp;
         switch (static_cast<CSR>(d->i_type_imm()))
         {
@@ -1168,7 +1196,8 @@ class Core
 
     void csrrs(Decoder *d)
     {
-        uint32_t x = r->get_ireg(d->rs2());
+        printf("csrrs\n");
+        uint32_t x = r->get_ireg(d->rs1());
         uint32_t satp;
         switch (static_cast<CSR>(d->i_type_imm()))
         {
@@ -1184,7 +1213,8 @@ class Core
 
     void csrrc(Decoder *d)
     {
-        uint32_t x = r->get_ireg(d->rs2());
+        printf("csrrc\n");
+        uint32_t x = r->get_ireg(d->rs1());
 
         uint32_t satp;
         switch (static_cast<CSR>(d->i_type_imm()))
@@ -1310,6 +1340,7 @@ class Core
         m = new Memory(io);
         stat = new Stat;
         disasm = new Disasm;
+        mode = Mode::Machine;
 
         this->settings = settings;
 
@@ -1351,8 +1382,9 @@ class Core
     {
         while (1)
         {
+            Permission perm = mode_perm().read_on().exec_on();
             uint32_t ip = r->ip;
-            Decoder d = Decoder(m->get_inst(ip));
+            Decoder d = Decoder(m->get_inst(ip, perm));
             run(&d);
             if (settings->show_inst_value)
             {

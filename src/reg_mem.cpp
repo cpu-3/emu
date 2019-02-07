@@ -27,21 +27,49 @@ class Permission
         this->exec = exec;
         this->user = user;
     }
+    Permission()
+    {
+        this->read = false;
+        this->write = false;
+        this->exec = false;
+        this->user = false;
+    }
+    Permission read_on()
+    {
+        this->read = true;
+        return *this;
+    }
+    Permission write_on()
+    {
+        this->write = true;
+        return *this;
+    }
+    Permission exec_on()
+    {
+        this->exec = true;
+        return *this;
+    }
+    Permission user_on()
+    {
+        this->user = true;
+        return *this;
+    }
 };
 
 class Memory
 {
     static const uint32_t memory_size = 1 << 31;
 
-    static const uint32_t uart_rx_addr = 0x10000;
-    static const uint32_t uart_tx_addr = 0x10004;
-    static const uint32_t led_addr = 0x10008;
+    static const uint32_t uart_rx_addr = 0x80000000;
+    static const uint32_t uart_tx_addr = 0x80000004;
+    static const uint32_t led_addr = 0x80000008;
     static const uint32_t PGSIZE = 1 << 12;
     static const uint32_t PTESIZE = 4;
     static const uint32_t LEVELS = 2;
 
     uint8_t memory[memory_size];
     IO *io;
+    Permission perm;
 
     uint32_t satp;
 
@@ -112,12 +140,26 @@ class Memory
         return (addr >> 4) & 1;
     }
 
-    uint32_t va2pa(uint32_t addr, Permission perm)
+    void print_table(uint64_t table)
     {
+        printf("table: %08x\n", table);
+        uint32_t *m = (uint32_t *)memory;
+        for (int i = 0; i < 1024; i++)
+        {
+            printf("%08x\t", m[table / 4 + i]);
+            if (i % 8 == 7)
+                printf("\n");
+        }
+    }
+
+    uint64_t va2pa(uint32_t addr, Permission perm)
+    {
+        printf("va2pa: %x\n", addr);
         int32_t i = LEVELS - 1;
         uint32_t vpns[2] = {vpn1(addr), vpn0(addr)};
 
         uint64_t a = base_table();
+        print_table(a);
         uint64_t pte;
         while (i >= 0)
         {
@@ -159,6 +201,7 @@ class Memory
         {
             pa = (ppn1(pte) << 22) | (ppn0(pte) << 12) | (offset(addr));
         }
+        printf("[debug] %x -> %lx\n", addr, pa);
         return pa;
     }
 
@@ -213,14 +256,24 @@ class Memory
         return true;
     }
 
+    uint64_t mmu(uint32_t addr, Permission perm)
+    {
+        if (!is_addressing_on())
+        {
+            return addr;
+        }
+        return va2pa(addr, perm);
+    }
+
   public:
     Memory(IO *io)
     {
         this->io = io;
     }
 
-    void write_mem(uint32_t addr, uint8_t val)
+    void write_mem(uint32_t addr, uint8_t val, Permission perm)
     {
+        addr = mmu(addr, perm);
         if (!hook_io_write(addr, val))
         {
             alignment_check(addr, 1);
@@ -228,8 +281,9 @@ class Memory
         }
     }
 
-    void write_mem(uint32_t addr, uint16_t val)
+    void write_mem(uint32_t addr, uint16_t val, Permission perm)
     {
+        addr = mmu(addr, perm);
         if (!hook_io_write(addr, val))
         {
             alignment_check(addr, 2);
@@ -238,8 +292,9 @@ class Memory
         }
     }
 
-    void write_mem(uint32_t addr, uint32_t val)
+    void write_mem(uint32_t addr, uint32_t val, Permission perm)
     {
+        addr = mmu(addr, perm);
         if (!hook_io_write(addr, val))
         {
             alignment_check(addr, 4);
@@ -248,8 +303,9 @@ class Memory
         }
     }
 
-    uint8_t read_mem_1(uint32_t addr)
+    uint8_t read_mem_1(uint32_t addr, Permission perm)
     {
+        addr = mmu(addr, perm);
         uint8_t v;
         if (hook_io_read(addr, &v))
         {
@@ -259,8 +315,9 @@ class Memory
         return memory[addr];
     }
 
-    uint16_t read_mem_2(uint32_t addr)
+    uint16_t read_mem_2(uint32_t addr, Permission perm)
     {
+        addr = mmu(addr, perm);
         uint8_t v;
         if (hook_io_read(addr, &v))
         {
@@ -271,8 +328,9 @@ class Memory
         return m[addr / 2];
     }
 
-    uint32_t read_mem_4(uint32_t addr)
+    uint32_t read_mem_4(uint32_t addr, Permission perm)
     {
+        addr = mmu(addr, perm);
         uint8_t v;
         if (hook_io_read(addr, &v))
         {
@@ -283,8 +341,9 @@ class Memory
         return m[addr / 4];
     }
 
-    uint32_t get_inst(uint32_t addr)
+    uint32_t get_inst(uint32_t addr, Permission perm)
     {
+        addr = mmu(addr, perm);
         alignment_check(addr, 4);
         uint32_t *m = (uint32_t *)memory;
         return m[addr / 4];
@@ -304,6 +363,7 @@ class Memory
 
     void write_satp(uint32_t val)
     {
+        printf("%x -> %x\n", satp, val);
         satp = val;
     }
 
@@ -321,7 +381,7 @@ class Memory
             {
                 break;
             }
-            uint32_t v = read_mem_4(ad);
+            uint32_t v = read_mem_4(ad, Permission());
             printf("%08x: %08x\n", ad, v);
         }
         std::cout << std::endl;
