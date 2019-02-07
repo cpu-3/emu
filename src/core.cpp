@@ -103,6 +103,7 @@ class Core
     Stat *stat;
     Disasm *disasm;
     Mode mode;
+    unsigned int long long inst_count;
 
     Settings *settings;
 
@@ -1341,6 +1342,7 @@ class Core
         stat = new Stat;
         disasm = new Disasm;
         mode = Mode::Machine;
+        inst_count = 0;
 
         this->settings = settings;
 
@@ -1372,6 +1374,7 @@ class Core
     {
         if (!settings->hide_error_dump)
         {
+            printf("inst_count: %llx\n", inst_count);
             r->info();
             show_stack_from_top();
             io->show_status();
@@ -1386,8 +1389,14 @@ class Core
             uint32_t ip = r->ip;
             Decoder d = Decoder(m->get_inst(ip, perm));
             run(&d);
+            inst_count++;
+            if (inst_count < settings->wait)
+            {
+                continue;
+            }
             if (settings->show_inst_value)
             {
+                printf("inst_count: %llx\n", inst_count);
                 printf("ip: %x\n", ip);
                 std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
                 disasm->print_inst(disasm->type);
