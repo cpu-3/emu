@@ -1178,38 +1178,57 @@ class Core
         }
     }
 
+    uint32_t sscratch;
+    uint32_t sepc;
+
     void csrrw(Decoder *d)
     {
         printf("csrrw\n");
         uint32_t x = r->get_ireg(d->rs1());
-        uint32_t satp;
+        uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
         {
         case CSR::SATP:
-            satp = m->read_satp();
+            csr = m->read_satp();
             m->write_satp(x);
-            r->set_ireg(d->rd(), satp);
+            break;
+        case CSR::SEPC:
+            csr = sepc;
+            sepc = x;
+            break;
+        case CSR::SSCRATCH:
+            csr = sscratch;
+            sscratch = x;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
+        r->set_ireg(d->rd(), csr);
     }
 
     void csrrs(Decoder *d)
     {
         printf("csrrs\n");
         uint32_t x = r->get_ireg(d->rs1());
-        uint32_t satp;
+        uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
         {
         case CSR::SATP:
-            satp = m->read_satp();
-            m->write_satp(x | satp);
-            r->set_ireg(d->rd(), satp);
+            csr = m->read_satp();
+            m->write_satp(x | csr);
+            break;
+        case CSR::SEPC:
+            csr = sepc;
+            sepc = x | csr;
+            break;
+        case CSR::SSCRATCH:
+            csr = sscratch;
+            sscratch = x | csr;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
+        r->set_ireg(d->rd(), csr);
     }
 
     void csrrc(Decoder *d)
@@ -1217,17 +1236,25 @@ class Core
         printf("csrrc\n");
         uint32_t x = r->get_ireg(d->rs1());
 
-        uint32_t satp;
+        uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
         {
         case CSR::SATP:
-            satp = m->read_satp();
-            m->write_satp(x & (~satp));
-            r->set_ireg(d->rd(), satp);
+            csr = m->read_satp();
+            m->write_satp(x & (~csr));
+            break;
+        case CSR::SEPC:
+            csr = sepc;
+            sepc = x & (~csr);
+            break;
+        case CSR::SSCRATCH:
+            csr = sscratch;
+            sscratch = x & (~csr);
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
+        r->set_ireg(d->rd(), csr);
     }
 
     void csrrwi(Decoder *d)
@@ -1243,6 +1270,26 @@ class Core
     void csrrci(Decoder *d)
     {
         // not implemented
+    }
+
+    bool sret_flag;
+    void sret(Decoder *d)
+    {
+        // TODO: privilege stack
+        r->ip = sepc;
+        sret_flag = true;
+    }
+
+    void priv(Decoder *d)
+    {
+        switch (static_cast<Priv_Inst>(d->funct7()))
+        {
+        case Priv_Inst::SRET:
+            sret(d);
+            break;
+        default:
+            error_dump("対応していないPRIV命令です");
+        }
     }
 
     void sys(Decoder *d)
@@ -1266,6 +1313,9 @@ class Core
             break;
         case System_Inst::CSRRCI:
             csrrci(d);
+            break;
+        case System_Inst::PRIV:
+            priv(d);
             break;
         default:
             // system instrs other than csr
@@ -1324,7 +1374,10 @@ class Core
             break;
         case Inst::SYSTEM:
             sys(d);
-            r->ip += 4;
+            if (sret_flag)
+                sret_flag = false;
+            else
+                r->ip += 4;
             break;
         default:
             error_dump("対応していないopcodeが使用されました: %x\n", d->opcode());
@@ -1343,6 +1396,7 @@ class Core
         disasm = new Disasm;
         mode = Mode::Machine;
         inst_count = 0;
+        sret_flag = false;
 
         this->settings = settings;
 

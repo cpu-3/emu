@@ -169,7 +169,14 @@ class Memory
             pte = m[(a + vpns[i] * PTESIZE) / 4];
             // TODO: PMA/PTE check
             if (!is_valid(pte) || (!is_read(pte) && is_write(pte)))
+            {
+                printf("va2pa: %x\n", addr);
+                printf("pte invalid. i = %d\n", i);
+                printf("vpns %d %d\n", vpns[1], vpns[0]);
+                print_table(base_table());
+                print_table(a);
                 throw Exception(Cause::PageFault);
+            }
             if (is_read(pte) || is_exec(pte))
                 break;
             i -= 1;
@@ -177,6 +184,11 @@ class Memory
             // print_table(a);
             if (i < 0)
             {
+                printf("i invalid\n");
+                printf("va2pa: %x\n", addr);
+                printf("vpns %d %d\n", vpns[1], vpns[0]);
+                print_table(base_table());
+                print_table(a);
                 throw Exception(Cause::PageFault);
             }
         }
@@ -187,6 +199,14 @@ class Memory
             (perm.user && !is_user(pte)))
         {
             printf("pagefault\n");
+            printf("%x\n", pte);
+            printf("        r w e u\n");
+            printf("need    %d %d %d %d\n", perm.read, perm.write, perm.exec, perm.user);
+            printf("current %d %d %d %d\n", is_read(pte), is_write(pte), is_exec(pte), is_user(pte));
+            printf("va2pa: %x\n", addr);
+            printf("vpns %d %d\n", vpns[1], vpns[0]);
+            print_table(base_table());
+            print_table(a);
             throw Exception(Cause::PageFault);
         }
         // TODO: check SUM/MXR

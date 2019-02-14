@@ -146,6 +146,7 @@ enum struct Mul_Div_Inst : uint8_t
 
 enum struct System_Inst : uint8_t
 {
+    PRIV = 0b000,
     CSRRW = 0b001,
     CSRRS = 0b010,
     CSRRC = 0b011,
@@ -154,7 +155,22 @@ enum struct System_Inst : uint8_t
     CSRRCI = 0b111,
 };
 
+enum struct Priv_Inst : uint8_t
+{
+    URET = 0b0000000,
+    SRET = 0b0001000,
+    MRET = 0b0011000,
+};
+
 enum struct CSR : uint16_t
 {
     SATP = 0x180,
+    SSTATUS = 0x100,
+    SEPC = 0x141,
+    SSCRATCH = 0x140,
+    SIE = 0x104,
+    STVEC = 0x105,
+    SCAUSE = 0x142,
+    SIP = 0x144,
+    STVAL = 0x143,
 };
