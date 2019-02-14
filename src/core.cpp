@@ -20,7 +20,7 @@ class ALU
     static uint32_t sra(uint32_t x, uint32_t y)
     {
         int32_t a = (int32_t)x;
-        return (uint32_t)(x >> (y & 0b11111));
+        return (uint32_t)(a >> (y & 0b11111));
     }
     static uint32_t slt(uint32_t x, uint32_t y)
     {
@@ -453,7 +453,7 @@ class Core
     void slli(Decoder *d)
     {
         uint32_t x = r->get_ireg(d->rs1());
-        uint32_t y = d->i_type_imm();
+        uint32_t y = d->i_type_imm() & 0x1f;
         r->set_ireg(d->rd(), ALU::sll(x, y));
         (stat->slli.stat)++;
         disasm->type = "i";
@@ -465,7 +465,7 @@ class Core
     void srli(Decoder *d)
     {
         uint32_t x = r->get_ireg(d->rs1());
-        uint32_t y = d->i_type_imm();
+        uint32_t y = d->i_type_imm() & 0x1f;
         r->set_ireg(d->rd(), ALU::srl(x, y));
         (stat->srli.stat)++;
         disasm->type = "i";
@@ -474,7 +474,33 @@ class Core
         disasm->base = d->rs1();
         disasm->imm = d->i_type_imm();
     }
-    // void srai
+    void srai(Decoder *d)
+    {
+        uint32_t x = r->get_ireg(d->rs1());
+        uint32_t y = d->i_type_imm() & 0x1f;
+        r->set_ireg(d->rd(), ALU::sra(x, y));
+        //(stat->srai.stat)++;
+        disasm->type = "i";
+        disasm->inst_name = "srai";
+        disasm->dest = d->rd();
+        disasm->base = d->rs1();
+        disasm->imm = d->i_type_imm();
+    }
+
+    void sri(Decoder *d)
+    {
+        switch (static_cast<ALUI_SRI_Inst>(d->funct7()))
+        {
+        case ALUI_SRI_Inst::SRLI:
+            srli(d);
+            break;
+        case ALUI_SRI_Inst::SRAI:
+            srai(d);
+            break;
+        default:
+            error_dump("対応していないfunct7が使用されました(sri)");
+        }
+    }
 
     void add(Decoder *d)
     {
@@ -751,8 +777,8 @@ class Core
         case ALUI_Inst::SLLI:
             slli(d);
             break;
-        case ALUI_Inst::SRLI:
-            srli(d);
+        case ALUI_Inst::SRI:
+            sri(d);
             break;
         default:
             error_dump("対応していないfunct3が使用されました: %x\n", d->funct3());

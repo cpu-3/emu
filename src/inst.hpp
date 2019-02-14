@@ -53,10 +53,10 @@ enum struct ALUI_Inst : uint8_t
     ORI = 0b110,
     ANDI = 0b111,
     SLLI = 0b001,
-    SRLI = 0b101,
+    SRI = 0b101,
 };
 
-enum struct ALUI_SRL_Inst : uint8_t
+enum struct ALUI_SRI_Inst : uint8_t
 {
     SRLI = 0b0000000,
     SRAI = 0b0100000,
