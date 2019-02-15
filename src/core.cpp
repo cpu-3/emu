@@ -102,14 +102,14 @@ class Core
     IO *io;
     Stat *stat;
     Disasm *disasm;
-    Mode mode;
+    Mode cpu_mode;
     unsigned int long long inst_count;
 
     Settings *settings;
 
     Permission mode_perm()
     {
-        if (mode == User)
+        if (cpu_mode == User)
         {
             return Permission().user_on().read_on();
         }
@@ -1206,6 +1206,7 @@ class Core
 
     uint32_t sscratch;
     uint32_t sepc;
+    uint32_t stvec;
 
     void csrrw(Decoder *d)
     {
@@ -1225,6 +1226,10 @@ class Core
         case CSR::SSCRATCH:
             csr = sscratch;
             sscratch = x;
+            break;
+        case CSR::STVEC:
+            csr = stvec;
+            stvec = x;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
@@ -1250,6 +1255,10 @@ class Core
         case CSR::SSCRATCH:
             csr = sscratch;
             sscratch = x | csr;
+            break;
+        case CSR::STVEC:
+            csr = stvec;
+            stvec = x | csr;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
@@ -1277,6 +1286,10 @@ class Core
             csr = sscratch;
             sscratch = x & (~csr);
             break;
+        case CSR::STVEC:
+            csr = stvec;
+            stvec = x & (~csr);
+            break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
@@ -1299,11 +1312,43 @@ class Core
     }
 
     bool sret_flag;
+    bool csr_unprivileged;
+    uint32_t sstatus;
     void sret(Decoder *d)
     {
-        // TODO: privilege stack
+        if (cpu_mode != Mode::User)
+        {
+            uint32_t sstatus5 = (sstatus >> 5) & 1;
+            sstatus = (1 << 5) | (sstatus5 < 1);
+        }
+        else
+        {
+            csr_unprivileged = true;
+        }
+        uint32_t sstatus8 = (sstatus >> 8) & 1;
+        cpu_mode = sstatus8 ? Mode::Supervisor : Mode::User;
         r->ip = sepc;
         sret_flag = true;
+    }
+
+    uint32_t scause;
+    uint32_t stval;
+
+    bool trap;
+
+    void ecall(Decoder *d)
+    {
+        if (cpu_mode == User)
+        {
+            scause = 1 << 8;
+            stval = 0;
+        }
+        else if (cpu_mode == Supervisor)
+        {
+            scause = 1 << 9;
+            stval = 0;
+        }
+        trap = true;
     }
 
     void priv(Decoder *d)
@@ -1312,6 +1357,9 @@ class Core
         {
         case Priv_Inst::SRET:
             sret(d);
+            break;
+        case Priv_Inst::ECALL:
+            ecall(d);
             break;
         default:
             error_dump("対応していないPRIV命令です");
@@ -1410,6 +1458,15 @@ class Core
             r->ip += 4;
             break;
         }
+
+        if (trap)
+        {
+            // always delegate
+            cpu_mode = Mode::Supervisor;
+            // always Direct Mode
+            r->ip = stvec >> 2;
+            trap = false;
+        }
     }
 
   public:
@@ -1420,9 +1477,19 @@ class Core
         m = new Memory(io);
         stat = new Stat;
         disasm = new Disasm;
-        mode = Mode::Machine;
+        cpu_mode = Mode::Supervisor;
         inst_count = 0;
         sret_flag = false;
+        csr_unprivileged = false;
+        sscratch = 0;
+        sepc = 0;
+        stvec = 0;
+        scause = 0;
+        stval = 0;
+
+        sstatus = 0;
+
+        trap = false;
 
         this->settings = settings;
 
@@ -1469,6 +1536,8 @@ class Core
             uint32_t ip = r->ip;
             Decoder d = Decoder(m->get_inst(ip, perm));
             run(&d);
+
+            csr_unprivileged = false;
             inst_count++;
             if (inst_count < settings->wait)
             {

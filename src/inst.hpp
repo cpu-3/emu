@@ -9,9 +9,10 @@ enum struct Inst : uint8_t
     STORE = 0b0100011,
     ALUI = 0b0010011,
     ALU = 0b0110011,
-    FENCE = 0b0001111,  // not yet implemented
-    ECALL = 0b1110011,  // not yet implemented
-    EBREAK = 0b1110011, // not yet implemented
+    FENCE = 0b0001111, // not yet implemented
+    // this is SYSTEM
+    /*ECALL = 0b1110011,  // not yet implemented
+    EBREAK = 0b1110011, // not yet implemented*/
     FLOAD = 0b0000111,
     FSTORE = 0b0100111,
     FPU = 0b1010011,
@@ -160,6 +161,7 @@ enum struct Priv_Inst : uint8_t
     URET = 0b0000000,
     SRET = 0b0001000,
     MRET = 0b0011000,
+    ECALL = 0b0000000,
 };
 
 enum struct CSR : uint16_t
