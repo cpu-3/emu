@@ -1231,6 +1231,10 @@ class Core
             csr = stvec;
             stvec = x;
             break;
+        case CSR::SCAUSE:
+            csr = scause;
+            scause = x;
+            break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
@@ -1259,6 +1263,10 @@ class Core
         case CSR::STVEC:
             csr = stvec;
             stvec = x | csr;
+            break;
+        case CSR::SCAUSE:
+            csr = scause;
+            scause = x | csr;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
@@ -1290,8 +1298,12 @@ class Core
             csr = stvec;
             stvec = x & (~csr);
             break;
+        case CSR::SCAUSE:
+            csr = scause;
+            scause = x & (~csr);
+            break;
         default:
-            error_dump("対応していないstatusレジスタ番号です");
+            error_dump("対応していないstatusレジスタ番号です: %x", d->i_type_imm());
         }
         r->set_ireg(d->rd(), csr);
     }
