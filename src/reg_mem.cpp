@@ -391,7 +391,6 @@ class Memory
 
     void write_satp(uint32_t val)
     {
-        printf("%x -> %x\n", satp, val);
         satp = val;
     }
 

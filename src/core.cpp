@@ -1210,7 +1210,6 @@ class Core
 
     void csrrw(Decoder *d)
     {
-        printf("csrrw\n");
         uint32_t x = r->get_ireg(d->rs1());
         uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
@@ -1243,7 +1242,6 @@ class Core
 
     void csrrs(Decoder *d)
     {
-        printf("csrrs\n");
         uint32_t x = r->get_ireg(d->rs1());
         uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
@@ -1276,7 +1274,6 @@ class Core
 
     void csrrc(Decoder *d)
     {
-        printf("csrrc\n");
         uint32_t x = r->get_ireg(d->rs1());
 
         uint32_t csr;
@@ -1338,7 +1335,7 @@ class Core
             csr_unprivileged = true;
         }
         uint32_t sstatus8 = (sstatus >> 8) & 1;
-        cpu_mode = sstatus8 ? Mode::Supervisor : Mode::User;
+        cpu_mode = sstatus8 == 1 ? Mode::Supervisor : Mode::User;
         r->ip = sepc;
         sret_flag = true;
     }
@@ -1352,6 +1349,7 @@ class Core
     {
         if (cpu_mode == User)
         {
+            printf("ecall!!!\n");
             scause = 1 << 8;
             stval = 0;
         }
@@ -1476,6 +1474,7 @@ class Core
             // always delegate
             cpu_mode = Mode::Supervisor;
             // always Direct Mode
+            sepc = r->ip;
             r->ip = stvec >> 2;
             trap = false;
         }
@@ -1551,7 +1550,7 @@ class Core
 
             csr_unprivileged = false;
             inst_count++;
-            if (inst_count < settings->wait)
+            if (cpu_mode != User | inst_count < settings->wait)
             {
                 continue;
             }
