@@ -80,7 +80,7 @@ class Memory
 
     uint32_t base_table()
     {
-        return (satp & 0x7fffff) * PGSIZE;
+        return (satp & 0x3fffff) * PGSIZE;
     }
 
     uint32_t vpn1(uint32_t addr)
@@ -101,6 +101,11 @@ class Memory
     uint64_t ppn(uint64_t addr)
     {
         return addr / PGSIZE;
+    }
+
+    uint64_t pte_ppn(uint32_t pte)
+    {
+        return pte >> 10;
     }
 
     uint64_t ppn0(uint64_t addr)
@@ -154,12 +159,13 @@ class Memory
 
     uint64_t va2pa(uint32_t addr, Permission perm)
     {
-        // printf("va2pa: %x\n", addr);
+        //printf("va2pa: %x\n", addr);
+        //printf("%x\n", satp);
         int32_t i = LEVELS - 1;
         uint32_t vpns[2] = {vpn0(addr), vpn1(addr)};
 
         uint64_t a = base_table();
-        // print_table(a);
+        //print_table(a);
         uint64_t pte;
 
         uint32_t *m = (uint32_t *)memory;
@@ -167,6 +173,7 @@ class Memory
         {
             // printf("i: %x, vpn: %x\n", i, vpns[i]);
             pte = m[(a + vpns[i] * PTESIZE) / 4];
+            //printf("%x\n", pte);
             // TODO: PMA/PTE check
             if (!is_valid(pte) || (!is_read(pte) && is_write(pte)))
             {
@@ -180,8 +187,9 @@ class Memory
             if (is_read(pte) || is_exec(pte))
                 break;
             i -= 1;
-            a = ppn(pte) * PGSIZE;
+            a = pte_ppn(pte) * PGSIZE;
             // print_table(a);
+            //print_table(a);
             if (i < 0)
             {
                 printf("i invalid\n");
@@ -230,6 +238,8 @@ class Memory
             pa = (ppn1(pte) << 22) | (ppn0(pte) << 12) | (offset(addr));
         }
         //printf("[debug] %x -> %lx\n", addr, pa);
+        int x;
+        //std::cin >> x;
         return pa;
     }
 
