@@ -1207,6 +1207,7 @@ class Core
     uint32_t sscratch;
     uint32_t sepc;
     uint32_t stvec;
+    uint32_t sie;
 
     void csrrw(Decoder *d)
     {
@@ -1233,6 +1234,18 @@ class Core
         case CSR::SCAUSE:
             csr = scause;
             scause = x;
+            break;
+        case CSR::SSTATUS:
+            csr = sstatus;
+            sstatus = x;
+            break;
+        case CSR::SIE:
+            csr = sie;
+            sie = x;
+            break;
+        case CSR::STVAL:
+            csr = stval;
+            stval = x;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
@@ -1266,6 +1279,18 @@ class Core
             csr = scause;
             scause = x | csr;
             break;
+        case CSR::SSTATUS:
+            csr = sstatus;
+            sstatus = x | csr;
+            break;
+        case CSR::SIE:
+            csr = sie;
+            sie = x | csr;
+            break;
+        case CSR::STVAL:
+            csr = stval;
+            stval = x | csr;
+            break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
@@ -1298,6 +1323,18 @@ class Core
         case CSR::SCAUSE:
             csr = scause;
             scause = x & (~csr);
+            break;
+        case CSR::SSTATUS:
+            csr = sstatus;
+            sstatus = x & (~csr);
+            break;
+        case CSR::SIE:
+            csr = sie;
+            sie = x & (~csr);
+            break;
+        case CSR::STVAL:
+            csr = stval;
+            stval = x & (~csr);
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です: %x", d->i_type_imm());
@@ -1497,6 +1534,7 @@ class Core
         stvec = 0;
         scause = 0;
         stval = 0;
+        sie = 0;
 
         sstatus = 0;
 
