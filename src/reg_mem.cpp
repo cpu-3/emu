@@ -1,15 +1,18 @@
 typedef enum
 {
-    PageFault
+    PageFault,
+    AccessFault,
 } Cause;
 
 class Exception
 {
   public:
     Cause cause;
-    Exception(Cause cause)
+    uint32_t stval;
+    Exception(Cause cause, uint32_t stval)
     {
         this->cause = cause;
+        this->stval = stval;
     }
 };
 
@@ -98,24 +101,19 @@ class Memory
         return addr & 0xfff;
     }
 
-    uint64_t ppn(uint64_t addr)
-    {
-        return addr / PGSIZE;
-    }
-
     uint64_t pte_ppn(uint32_t pte)
     {
         return pte >> 10;
     }
 
-    uint64_t ppn0(uint64_t addr)
+    uint64_t ppn0(uint32_t addr)
     {
-        return (addr >> 12) & 0x3ff;
+        return (addr >> 10) & 0x3ff;
     }
 
-    uint64_t ppn1(uint64_t addr)
+    uint64_t ppn1(uint32_t addr)
     {
-        return (addr >> 22);
+        return (addr >> 20);
     }
 
     // DAGUXWRV
@@ -182,7 +180,7 @@ class Memory
                 printf("vpns %d %d\n", vpns[1], vpns[0]);
                 print_table(base_table());
                 print_table(a);
-                throw Exception(Cause::PageFault);
+                throw Exception(Cause::PageFault, addr);
             }
             if (is_read(pte) || is_exec(pte))
                 break;
@@ -197,7 +195,7 @@ class Memory
                 printf("vpns %d %d\n", vpns[1], vpns[0]);
                 print_table(base_table());
                 print_table(a);
-                throw Exception(Cause::PageFault);
+                throw Exception(Cause::PageFault, addr);
             }
         }
         //printf("%x\n", pte);
@@ -215,13 +213,13 @@ class Memory
             printf("vpns %d %d\n", vpns[1], vpns[0]);
             print_table(base_table());
             print_table(a);
-            throw Exception(Cause::PageFault);
+            throw Exception(Cause::PageFault, addr);
         }
         // TODO: check SUM/MXR
 
         // misaligned superpage
         if (i > 0 && ppn0(pte) != 0)
-            throw Exception(Cause::PageFault);
+            throw Exception(Cause::PageFault, addr);
 
         // TODO: PMA PMP check / access/dirty check
 
@@ -247,7 +245,8 @@ class Memory
     {
         if (addr % size != 0)
         {
-            error_dump("メモリアドレスのアラインメントがおかしいです: %x\n", addr);
+            //error_dump("メモリアドレスのアラインメントがおかしいです: %x\n", addr);
+            throw Exception(Cause::AccessFault, addr);
         }
     }
 

@@ -708,47 +708,78 @@ class Core
 
     void load(Decoder *d)
     {
-        switch (static_cast<Load_Inst>(d->funct3()))
+        try
         {
-        case Load_Inst::LB:
-            lb(d);
-            break;
-        case Load_Inst::LH:
-            lh(d);
-            break;
-        case Load_Inst::LW:
-            lw(d);
-            break;
-        case Load_Inst::LBU:
-            lbu(d);
-            break;
-        case Load_Inst::LHU:
-            lhu(d);
-            break;
-        default:
-            error_dump("対応していないfunct3が使用されました: %x\n", d->funct3());
-            r->ip += 4;
-            break;
+            switch (static_cast<Load_Inst>(d->funct3()))
+            {
+            case Load_Inst::LB:
+                lb(d);
+                break;
+            case Load_Inst::LH:
+                lh(d);
+                break;
+            case Load_Inst::LW:
+                lw(d);
+                break;
+            case Load_Inst::LBU:
+                lbu(d);
+                break;
+            case Load_Inst::LHU:
+                lhu(d);
+                break;
+            default:
+                error_dump("対応していないfunct3が使用されました: %x\n", d->funct3());
+                r->ip += 4;
+                break;
+            }
+        }
+        catch (Exception e)
+        {
+            switch (e.cause)
+            {
+            case Cause::PageFault:
+                scause = 1 << 13; // LOAD PGFAULT
+            case Cause::AccessFault:
+                scause = 1 << 5;
+            }
+            stval = e.stval;
+            trap = true;
         }
     }
 
-    void store(Decoder *d)
+    void
+    store(Decoder *d)
     {
-        switch (static_cast<Store_Inst>(d->funct3()))
+        try
         {
-        case Store_Inst::SB:
-            sb(d);
-            break;
-        case Store_Inst::SH:
-            sh(d);
-            break;
-        case Store_Inst::SW:
-            sw(d);
-            break;
-        default:
-            error_dump("対応していないfunct3が使用されました: %x\n", d->funct3());
-            r->ip += 4;
-            break;
+            switch (static_cast<Store_Inst>(d->funct3()))
+            {
+            case Store_Inst::SB:
+                sb(d);
+                break;
+            case Store_Inst::SH:
+                sh(d);
+                break;
+            case Store_Inst::SW:
+                sw(d);
+                break;
+            default:
+                error_dump("対応していないfunct3が使用されました: %x\n", d->funct3());
+                r->ip += 4;
+                break;
+            }
+        }
+        catch (Exception e)
+        {
+            switch (e.cause)
+            {
+            case Cause::PageFault:
+                scause = 1 << 15; // STORE PGFAULT
+            case Cause::AccessFault:
+                scause = 1 << 7;
+            }
+            stval = e.stval;
+            trap = true;
         }
     }
 
@@ -1108,29 +1139,59 @@ class Core
 
     void fload(Decoder *d)
     {
-        switch (static_cast<FLoad_Inst>(d->funct3()))
+        try
         {
-        case FLoad_Inst::FLW:
-            flw(d);
-            break;
-        default:
-            error_dump("widthがおかしいです(仕様書p112): %x\n", d->funct3());
-            r->ip += 4;
-            break;
+            switch (static_cast<FLoad_Inst>(d->funct3()))
+            {
+            case FLoad_Inst::FLW:
+                flw(d);
+                break;
+            default:
+                error_dump("widthがおかしいです(仕様書p112): %x\n", d->funct3());
+                r->ip += 4;
+                break;
+            }
+        }
+        catch (Exception e)
+        {
+            switch (e.cause)
+            {
+            case Cause::PageFault:
+                scause = 1 << 13; // LOAD PGFAULT
+            case Cause::AccessFault:
+                scause = 1 << 5;
+            }
+            stval = e.stval;
+            trap = true;
         }
     }
 
     void fstore(Decoder *d)
     {
-        switch (static_cast<FStore_Inst>(d->funct3()))
+        try
         {
-        case FStore_Inst::FSW:
-            fsw(d);
-            break;
-        default:
-            error_dump("widthがおかしいです(仕様書p112): %x\n", d->funct3());
-            r->ip += 4;
-            break;
+            switch (static_cast<FStore_Inst>(d->funct3()))
+            {
+            case FStore_Inst::FSW:
+                fsw(d);
+                break;
+            default:
+                error_dump("widthがおかしいです(仕様書p112): %x\n", d->funct3());
+                r->ip += 4;
+                break;
+            }
+        }
+        catch (Exception e)
+        {
+            switch (e.cause)
+            {
+            case Cause::PageFault:
+                scause = 1 << 15; // STORE PGFAULT
+            case Cause::AccessFault:
+                scause = 1 << 7;
+            }
+            stval = e.stval;
+            trap = true;
         }
     }
 
@@ -1505,16 +1566,6 @@ class Core
             r->ip += 4;
             break;
         }
-
-        if (trap)
-        {
-            // always delegate
-            cpu_mode = Mode::Supervisor;
-            // always Direct Mode
-            sepc = r->ip;
-            r->ip = stvec >> 2;
-            trap = false;
-        }
     }
 
   public:
@@ -1579,25 +1630,59 @@ class Core
     }
     void main_loop()
     {
+        int mycount = 0;
         while (1)
         {
             Permission perm = mode_perm().read_on().exec_on();
             uint32_t ip = r->ip;
-            Decoder d = Decoder(m->get_inst(ip, perm));
-            run(&d);
+            uint32_t inst;
+            try
+            {
+                inst = m->get_inst(ip, perm);
+                Decoder d = Decoder(inst);
+
+                mycount++;
+                if (ip == 0x1228)
+                {
+                    printf("%d\n", mycount);
+                }
+                if (settings->show_inst_value)
+                {
+                    printf("inst_count: %llx\n", inst_count);
+                    printf("ip: %x\n", ip);
+                    std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
+                    disasm->print_inst(disasm->type);
+                }
+                run(&d);
+            }
+            catch (Exception e)
+            {
+                switch (e.cause)
+                {
+                case Cause::PageFault:
+                    scause = 1 << 15; // STORE PGFAULT
+                case Cause::AccessFault:
+                    scause = 1 << 7;
+                }
+                stval = e.stval;
+                trap = true;
+            }
+
+            if (trap)
+            {
+                // always delegate
+                cpu_mode = Mode::Supervisor;
+                // always Direct Mode
+                sepc = r->ip;
+                r->ip = stvec >> 2;
+                trap = false;
+            }
 
             csr_unprivileged = false;
             inst_count++;
             if (cpu_mode != User | inst_count < settings->wait)
             {
                 continue;
-            }
-            if (settings->show_inst_value)
-            {
-                printf("inst_count: %llx\n", inst_count);
-                printf("ip: %x\n", ip);
-                std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
-                disasm->print_inst(disasm->type);
             }
             if (settings->show_registers)
             {
