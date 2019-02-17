@@ -739,8 +739,10 @@ class Core
             {
             case Cause::PageFault:
                 scause = 1 << 13; // LOAD PGFAULT
+                break;
             case Cause::AccessFault:
                 scause = 1 << 5;
+                break;
             }
             stval = e.stval;
             trap = true;
@@ -775,8 +777,10 @@ class Core
             {
             case Cause::PageFault:
                 scause = 1 << 15; // STORE PGFAULT
+                break;
             case Cause::AccessFault:
                 scause = 1 << 7;
+                break;
             }
             stval = e.stval;
             trap = true;
@@ -1158,8 +1162,10 @@ class Core
             {
             case Cause::PageFault:
                 scause = 1 << 13; // LOAD PGFAULT
+                break;
             case Cause::AccessFault:
                 scause = 1 << 5;
+                break;
             }
             stval = e.stval;
             trap = true;
@@ -1187,8 +1193,10 @@ class Core
             {
             case Cause::PageFault:
                 scause = 1 << 15; // STORE PGFAULT
+                break;
             case Cause::AccessFault:
                 scause = 1 << 7;
+                break;
             }
             stval = e.stval;
             trap = true;
@@ -1646,8 +1654,10 @@ class Core
                 {
                 case Cause::PageFault:
                     scause = 1 << 12; // INST PGFAULT
+                    break;
                 case Cause::AccessFault:
                     scause = 1 << 1;
+                    break;
                 }
                 stval = e.stval;
                 trap = true;
