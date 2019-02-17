@@ -1639,35 +1639,24 @@ class Core
             try
             {
                 inst = m->get_inst(ip, perm);
-                Decoder d = Decoder(inst);
-
-                mycount++;
-                if (ip == 0x1228)
-                {
-                    printf("%d\n", mycount);
-                }
-                if (settings->show_inst_value)
-                {
-                    printf("inst_count: %llx\n", inst_count);
-                    printf("ip: %x\n", ip);
-                    std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
-                    disasm->print_inst(disasm->type);
-                }
-                run(&d);
             }
             catch (Exception e)
             {
                 switch (e.cause)
                 {
                 case Cause::PageFault:
-                    scause = 1 << 15; // STORE PGFAULT
+                    scause = 1 << 12; // INST PGFAULT
                 case Cause::AccessFault:
-                    scause = 1 << 7;
+                    scause = 1 << 1;
                 }
                 stval = e.stval;
                 trap = true;
             }
-
+            Decoder d = Decoder(inst);
+            if (!trap)
+            {
+                run(&d);
+            }
             if (trap)
             {
                 // always delegate
@@ -1680,6 +1669,13 @@ class Core
 
             csr_unprivileged = false;
             inst_count++;
+            if (settings->show_inst_value)
+            {
+                printf("inst_count: %llx\n", inst_count);
+                printf("ip: %x\n", ip);
+                std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
+                disasm->print_inst(disasm->type);
+            }
             if (cpu_mode != User | inst_count < settings->wait)
             {
                 continue;
