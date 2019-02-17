@@ -179,7 +179,7 @@ class Memory
                 printf("pte invalid. i = %d\n", i);
                 printf("vpns %d %d\n", vpns[1], vpns[0]);
                 print_table(base_table());
-                print_table(a);
+                //print_table(a);
                 throw Exception(Cause::PageFault, addr);
             }
             if (is_read(pte) || is_exec(pte))
@@ -212,7 +212,7 @@ class Memory
             printf("va2pa: %x\n", addr);
             printf("vpns %d %d\n", vpns[1], vpns[0]);
             print_table(base_table());
-            print_table(a);
+            //print_table(a);
             throw Exception(Cause::PageFault, addr);
         }
         // TODO: check SUM/MXR

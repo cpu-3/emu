@@ -26,7 +26,7 @@ class ALU
     {
         int32_t a = (int32_t)x;
         int32_t b = (int32_t)y;
-        return a > b;
+        return a < b;
     }
     static uint32_t sltu(uint32_t x, uint32_t y)
     {
@@ -1686,7 +1686,7 @@ class Core
                 std::cout << "inst: " << std::bitset<32>(d.code) << std::endl;
                 disasm->print_inst(disasm->type);
             }
-            if (cpu_mode != User | inst_count < settings->wait)
+            if (inst_count < settings->wait)
             {
                 continue;
             }
