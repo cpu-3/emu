@@ -752,6 +752,22 @@ class Core
     void
     store(Decoder *d)
     {
+        if (inst_count % 2 == 0)
+        {
+            uint32_t base = r->get_ireg(d->rs1());
+            int32_t offset = d->s_type_imm();
+            offset <<= 20;
+            offset >>= 20;
+            uint32_t addr = base + offset;
+            if (addr == 0x50010)
+            {
+                printf("%x %x\n", stvec >> 2, r->ip);
+                scause = 1 << 17;
+                stval = addr;
+                trap = true;
+                return;
+            }
+        }
         try
         {
             switch (static_cast<Store_Inst>(d->funct3()))
@@ -1278,8 +1294,17 @@ class Core
     uint32_t stvec;
     uint32_t sie;
 
+    void check_supervisor()
+    {
+        if (cpu_mode == Mode::User)
+        {
+            error_dump("check supervisor\n");
+        }
+    }
+
     void csrrw(Decoder *d)
     {
+        check_supervisor();
         uint32_t x = r->get_ireg(d->rs1());
         uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
@@ -1324,6 +1349,7 @@ class Core
 
     void csrrs(Decoder *d)
     {
+        check_supervisor();
         uint32_t x = r->get_ireg(d->rs1());
         uint32_t csr;
         switch (static_cast<CSR>(d->i_type_imm()))
@@ -1368,6 +1394,7 @@ class Core
 
     void csrrc(Decoder *d)
     {
+        check_supervisor();
         uint32_t x = r->get_ireg(d->rs1());
 
         uint32_t csr;
@@ -1375,35 +1402,35 @@ class Core
         {
         case CSR::SATP:
             csr = m->read_satp();
-            m->write_satp(x & (~csr));
+            m->write_satp((~x) & csr);
             break;
         case CSR::SEPC:
             csr = sepc;
-            sepc = x & (~csr);
+            sepc = ~x & csr;
             break;
         case CSR::SSCRATCH:
             csr = sscratch;
-            sscratch = x & (~csr);
+            sscratch = ~x & csr;
             break;
         case CSR::STVEC:
             csr = stvec;
-            stvec = x & (~csr);
+            stvec = ~x & csr;
             break;
         case CSR::SCAUSE:
             csr = scause;
-            scause = x & (~csr);
+            scause = ~x & csr;
             break;
         case CSR::SSTATUS:
             csr = sstatus;
-            sstatus = x & (~csr);
+            sstatus = ~x & csr;
             break;
         case CSR::SIE:
             csr = sie;
-            sie = x & (~csr);
+            sie = ~x & csr;
             break;
         case CSR::STVAL:
             csr = stval;
-            stval = x & (~csr);
+            stval = ~x & csr;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です: %x", d->i_type_imm());
@@ -1434,7 +1461,7 @@ class Core
         if (cpu_mode != Mode::User)
         {
             uint32_t sstatus5 = (sstatus >> 5) & 1;
-            sstatus = (1 << 5) | (sstatus5 < 1);
+            sstatus = (1 << 5) | (sstatus5 << 1);
         }
         else
         {
@@ -1453,9 +1480,9 @@ class Core
 
     void ecall(Decoder *d)
     {
+        r->ip -= 4;
         if (cpu_mode == User)
         {
-            printf("ecall!!!\n");
             scause = 1 << 8;
             stval = 0;
         }
@@ -1670,6 +1697,8 @@ class Core
             if (trap)
             {
                 // always delegate
+                uint32_t sstatus1 = (sstatus >> 1) & 1;
+                sstatus = (cpu_mode == Mode::Supervisor ? 1 << 8 : 0) | (sstatus1 << 5);
                 cpu_mode = Mode::Supervisor;
                 // always Direct Mode
                 sepc = r->ip;
