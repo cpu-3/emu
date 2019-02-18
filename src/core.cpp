@@ -100,6 +100,7 @@ class Core
     Memory *m;
     Register *r;
     IO *io;
+    MTIMER *mtimer;
     Stat *stat;
     Disasm *disasm;
     Mode cpu_mode;
@@ -1294,6 +1295,7 @@ class Core
     uint32_t sepc;
     uint32_t stvec;
     uint32_t sie;
+    uint32_t sip;
 
     void check_supervisor()
     {
@@ -1342,6 +1344,10 @@ class Core
             csr = stval;
             stval = x;
             break;
+        case CSR::SIP:
+            csr = sip;
+            stval = x;
+            break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
         }
@@ -1386,6 +1392,10 @@ class Core
         case CSR::STVAL:
             csr = stval;
             stval = x | csr;
+            break;
+        case CSR::SIP:
+            csr = sip;
+            sip = x | csr;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です");
@@ -1432,6 +1442,10 @@ class Core
         case CSR::STVAL:
             csr = stval;
             stval = ~x & csr;
+            break;
+        case CSR::SIP:
+            csr = sip;
+            sip = ~x & csr;
             break;
         default:
             error_dump("対応していないstatusレジスタ番号です: %x", d->i_type_imm());
@@ -1563,11 +1577,13 @@ class Core
             branch(d);
             break;
         case Inst::LOAD:
+            mtimer->incr_time(40);
             load(d);
             if (!trap)
                 r->ip += 4;
             break;
         case Inst::STORE:
+            mtimer->incr_time(40);
             store(d);
             if (!trap)
                 r->ip += 4;
@@ -1581,11 +1597,13 @@ class Core
             r->ip += 4;
             break;
         case Inst::FLOAD:
+            mtimer->incr_time(40);
             fload(d);
             if (!trap)
                 r->ip += 4;
             break;
         case Inst::FSTORE:
+            mtimer->incr_time(40);
             fstore(d);
             if (!trap)
                 r->ip += 4;
@@ -1618,7 +1636,8 @@ class Core
     {
         r = new Register;
         io = new IO;
-        m = new Memory(io);
+        mtimer = new MTIMER();
+        m = new Memory(io, mtimer);
         stat = new Stat;
         disasm = new Disasm;
         cpu_mode = Mode::Supervisor;
@@ -1631,6 +1650,7 @@ class Core
         scause = 0;
         stval = 0;
         sie = 0;
+        sip = 0;
 
         sstatus = 0;
 
@@ -1653,6 +1673,7 @@ class Core
     {
         delete r;
         delete m;
+        delete mtimer;
         delete io;
         delete stat;
         delete disasm;
@@ -1681,8 +1702,25 @@ class Core
             Permission perm = mode_perm().read_on().exec_on();
             uint32_t ip = r->ip;
             uint32_t inst;
+
+            // timer intr
+            bool occur_intr = ((sstatus >> 1) & 1) && (((sie & sip) >> 5) & 1);
+            if (occur_intr)
+            {
+                uint32_t sstatus1 = (sstatus >> 1) & 1;
+                sstatus = (cpu_mode == Mode::Supervisor ? 1 << 8 : 0) | (sstatus1 << 5);
+                cpu_mode = Mode::Supervisor;
+                // always Direct Mode
+                sepc = r->ip;
+                stval = 0;
+                scause = (1 << 31) | (1 << 5);
+                printf("intr in %x \n", r->ip);
+                r->ip = stvec >> 2;
+                continue;
+            }
             try
             {
+                mtimer->incr_time(40);
                 inst = m->get_inst(ip, perm);
             }
             catch (Exception e)
@@ -1715,6 +1753,12 @@ class Core
                 printf("in %x \n", r->ip);
                 r->ip = stvec >> 2;
                 trap = false;
+            }
+
+            // intr check
+            if (mtimer->is_timer_intr())
+            {
+                sip = sip | (1 << 5);
             }
 
             csr_unprivileged = false;

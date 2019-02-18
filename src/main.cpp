@@ -12,6 +12,7 @@
 #include "dump.cpp"
 #include "settings.cpp"
 #include "decoder.cpp"
+#include "mtimer.cpp"
 #include "io.cpp"
 #include "reg_mem.cpp"
 #include "fpu.cpp"

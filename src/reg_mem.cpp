@@ -66,12 +66,17 @@ class Memory
     static const uint32_t uart_rx_addr = 0x80000000;
     static const uint32_t uart_tx_addr = 0x80000004;
     static const uint32_t led_addr = 0x80000008;
+    static const uint32_t mtime_addr = 0x80001000;
+    static const uint32_t mtimeh_addr = 0x80001004;
+    static const uint32_t mtimecmp_addr = 0x80001008;
+    static const uint32_t mtimecmph_addr = 0x8000100C;
     static const uint32_t PGSIZE = 1 << 12;
     static const uint32_t PTESIZE = 4;
     static const uint32_t LEVELS = 2;
 
     uint8_t memory[memory_size];
     IO *io;
+    MTIMER *mtimer;
     Permission perm;
 
     uint32_t satp;
@@ -250,6 +255,12 @@ class Memory
         }
     }
 
+    bool is_mtimer_addr(uint32_t addr)
+    {
+        return addr == mtime_addr || addr == mtimeh_addr ||
+               addr == mtimecmp_addr || addr == mtimecmph_addr;
+    }
+
     bool hook_io_write(uint32_t addr, uint8_t val)
     {
         if (addr == uart_rx_addr)
@@ -293,6 +304,56 @@ class Memory
         return true;
     }
 
+    bool hook_mtimer_write(uint32_t addr, uint32_t val)
+    {
+        if (addr == mtime_addr)
+        {
+            mtimer->write_mtimel(val);
+        }
+        else if (addr == mtimeh_addr)
+        {
+            mtimer->write_mtimeh(val);
+        }
+        else if (addr == mtimecmp_addr)
+        {
+            mtimer->write_mtimecmpl(val);
+        }
+        else if (addr == mtimecmph_addr)
+        {
+            mtimer->write_mtimecmph(val);
+        }
+        else
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool hook_mtimer_read(uint32_t addr, uint32_t *v)
+    {
+        if (addr == mtime_addr)
+        {
+            *v = mtimer->read_mtimel();
+        }
+        else if (addr == mtimeh_addr)
+        {
+            *v = mtimer->read_mtimeh();
+        }
+        else if (addr == mtimecmp_addr)
+        {
+            *v = mtimer->read_mtimecmpl();
+        }
+        else if (addr == mtimecmph_addr)
+        {
+            *v = mtimer->read_mtimecmph();
+        }
+        else
+        {
+            return false;
+        }
+        return true;
+    }
+
     uint64_t mmu(uint32_t addr, Permission perm)
     {
         if (!is_addressing_on())
@@ -303,14 +364,22 @@ class Memory
     }
 
   public:
-    Memory(IO *io)
+    Memory(IO *io, MTIMER *mtimer)
     {
         this->io = io;
+        this->mtimer = mtimer;
     }
 
     void write_mem(uint32_t addr, uint8_t val, Permission perm)
     {
         addr = mmu(addr, perm);
+        if (is_mtimer_addr(addr))
+        {
+            puts("mtimerにはwordアクセスしてください");
+            while (1)
+            {
+            }
+        }
         if (!hook_io_write(addr, val))
         {
             alignment_check(addr, 1);
@@ -321,6 +390,13 @@ class Memory
     void write_mem(uint32_t addr, uint16_t val, Permission perm)
     {
         addr = mmu(addr, perm);
+        if (is_mtimer_addr(addr))
+        {
+            puts("mtimerにはwordアクセスしてください");
+            while (1)
+            {
+            }
+        }
         if (!hook_io_write(addr, val))
         {
             alignment_check(addr, 2);
@@ -332,7 +408,7 @@ class Memory
     void write_mem(uint32_t addr, uint32_t val, Permission perm)
     {
         addr = mmu(addr, perm);
-        if (!hook_io_write(addr, val))
+        if (!hook_io_write(addr, val) && !hook_mtimer_write(addr, val))
         {
             alignment_check(addr, 4);
             uint32_t *m = (uint32_t *)memory;
@@ -343,6 +419,13 @@ class Memory
     uint8_t read_mem_1(uint32_t addr, Permission perm)
     {
         addr = mmu(addr, perm);
+        if (is_mtimer_addr(addr))
+        {
+            puts("mtimerにはwordアクセスしてください");
+            while (1)
+            {
+            }
+        }
         uint8_t v;
         if (hook_io_read(addr, &v))
         {
@@ -355,6 +438,13 @@ class Memory
     uint16_t read_mem_2(uint32_t addr, Permission perm)
     {
         addr = mmu(addr, perm);
+        if (is_mtimer_addr(addr))
+        {
+            puts("mtimerにはwordアクセスしてください");
+            while (1)
+            {
+            }
+        }
         uint8_t v;
         if (hook_io_read(addr, &v))
         {
@@ -372,6 +462,11 @@ class Memory
         if (hook_io_read(addr, &v))
         {
             return v;
+        }
+        uint32_t timerv;
+        if (hook_mtimer_read(addr, &timerv))
+        {
+            return timerv;
         }
         alignment_check(addr, 4);
         uint32_t *m = (uint32_t *)memory;
