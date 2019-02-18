@@ -1616,7 +1616,7 @@ class Core
             sys(d);
             if (sret_flag)
             {
-                printf("out: %x\n", r->ip);
+                //printf("out: %x\n", r->ip);
                 sret_flag = false;
             }
             else
@@ -1714,7 +1714,7 @@ class Core
                 sepc = r->ip;
                 stval = 0;
                 scause = (1 << 31) | (1 << 5);
-                printf("intr in %x \n", r->ip);
+                //printf("intr in %x \n", r->ip);
                 r->ip = stvec >> 2;
                 continue;
             }
@@ -1750,7 +1750,7 @@ class Core
                 cpu_mode = Mode::Supervisor;
                 // always Direct Mode
                 sepc = r->ip;
-                printf("in %x \n", r->ip);
+                //printf("in %x \n", r->ip);
                 r->ip = stvec >> 2;
                 trap = false;
             }

@@ -209,14 +209,14 @@ class Memory
             (perm.exec && !is_exec(pte)) ||
             (perm.user && !is_user(pte)))
         {
-            printf("pagefault\n");
+            /*printf("pagefault\n");
             printf("%x\n", pte);
             printf("        r w e u\n");
             printf("need    %d %d %d %d\n", perm.read, perm.write, perm.exec, perm.user);
             printf("current %d %d %d %d\n", is_read(pte), is_write(pte), is_exec(pte), is_user(pte));
             printf("va2pa: %x\n", addr);
             printf("vpns %d %d\n", vpns[1], vpns[0]);
-            print_table(base_table());
+            print_table(base_table());*/
             //print_table(a);
             throw Exception(Cause::PageFault, addr);
         }
