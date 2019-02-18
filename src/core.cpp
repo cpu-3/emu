@@ -752,21 +752,22 @@ class Core
     void
     store(Decoder *d)
     {
-        if (inst_count % 2 == 0)
+        uint32_t base = r->get_ireg(d->rs1());
+        int32_t offset = d->s_type_imm();
+        offset <<= 20;
+        offset >>= 20;
+        uint32_t addr = base + offset;
+        if (addr == 0x50004 || addr == 0x50040)
         {
-            uint32_t base = r->get_ireg(d->rs1());
-            int32_t offset = d->s_type_imm();
-            offset <<= 20;
-            offset >>= 20;
-            uint32_t addr = base + offset;
-            if (addr == 0x50010)
+            //printf("%x\n", addr);
+            /*if (inst_count % 2 == 0)
             {
-                printf("%x %x\n", stvec >> 2, r->ip);
+                printf("trap %x %x\n", stvec >> 2, r->ip);
                 scause = 1 << 17;
                 stval = addr;
                 trap = true;
                 return;
-            }
+            }*/
         }
         try
         {
@@ -1563,11 +1564,13 @@ class Core
             break;
         case Inst::LOAD:
             load(d);
-            r->ip += 4;
+            if (!trap)
+                r->ip += 4;
             break;
         case Inst::STORE:
             store(d);
-            r->ip += 4;
+            if (!trap)
+                r->ip += 4;
             break;
         case Inst::ALUI:
             alui(d);
@@ -1579,11 +1582,13 @@ class Core
             break;
         case Inst::FLOAD:
             fload(d);
-            r->ip += 4;
+            if (!trap)
+                r->ip += 4;
             break;
         case Inst::FSTORE:
             fstore(d);
-            r->ip += 4;
+            if (!trap)
+                r->ip += 4;
             break;
         case Inst::FPU:
             fpu(d);
@@ -1592,9 +1597,14 @@ class Core
         case Inst::SYSTEM:
             sys(d);
             if (sret_flag)
+            {
+                printf("out: %x\n", r->ip);
                 sret_flag = false;
+            }
             else
+            {
                 r->ip += 4;
+            }
             break;
         default:
             error_dump("対応していないopcodeが使用されました: %x\n", d->opcode());
@@ -1702,6 +1712,7 @@ class Core
                 cpu_mode = Mode::Supervisor;
                 // always Direct Mode
                 sepc = r->ip;
+                printf("in %x \n", r->ip);
                 r->ip = stvec >> 2;
                 trap = false;
             }
