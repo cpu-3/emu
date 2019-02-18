@@ -16,6 +16,7 @@ class IO
     void transmit_uart(uint8_t val)
     {
         std::cout << val;
+        std::flush();
     }
 
     uint8_t receive_uart()
@@ -23,4 +24,3 @@ class IO
         return getchar();
     }
 };
-
